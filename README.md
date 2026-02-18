@@ -13,6 +13,7 @@ Modular anti-cheat plugin for Counter-Strike 2 built on CounterStrikeSharp.
 - MySQL persistence (`detections`, `bans`).
 - Embedded REST backend for web panel consumption.
 - CSV telemetry logging for ML training (`data/aimbot_tracking_samples.csv`).
+- Optional SimpleAdmin ban handoff (API + command fallback).
 
 ## Requirements
 - CounterStrikeSharp
@@ -30,7 +31,7 @@ dotnet build Source2AntiCheat.csproj
 ## Config (example)
 ```json
 {
-  "ConfigVersion": 5,
+  "ConfigVersion": 7,
   "SilentAim": {
     "Enabled": true,
     "MaxDeviation": 15.0,
@@ -47,6 +48,7 @@ dotnet build Source2AntiCheat.csproj
     "RequireRecentShot": true,
     "ShotWindowTicks": 4,
     "TargetDotThreshold": 0.9965,
+    "MinDotGain": 0.02,
     "MaxTargetDistance": 6000.0,
     "BanPlayer": false
   },
@@ -60,6 +62,8 @@ dotnet build Source2AntiCheat.csproj
     "MinPlayerSpeed": 50.0,
     "MinTargetSpeed": 50.0,
     "RequireVisibility": true,
+    "RequireRecentShot": true,
+    "ShotWindowTicks": 8,
     "DecayRate": 1.0,
     "BanPlayer": false
   },
@@ -96,9 +100,17 @@ dotnet build Source2AntiCheat.csproj
     "CooldownSeconds": 2.0,
     "BanPlayer": true
   },
-  "Database": {
+  "DatabaseConfig": {
     "Enabled": false,
-    "ConnectionString": "Server=127.0.0.1;Port=3306;Database=s2ac;User ID=s2ac;Password=change_me;Pooling=true;",
+    "DatabaseType": "MySQL",
+    "DatabaseHost": "localhost",
+    "DatabasePort": 3306,
+    "DatabaseUser": "root",
+    "DatabasePassword": "",
+    "DatabaseName": "s2ac",
+    "DatabaseSSlMode": "preferred",
+    "ConnectionString": "",
+    "PreferSimpleAdminConnection": false,
     "AutoCreateTables": true,
     "CommandTimeoutSeconds": 8
   },
@@ -117,16 +129,30 @@ dotnet build Source2AntiCheat.csproj
   },
   "Enforcement": {
     "DetectionCooldownSeconds": 1.0,
-    "BanDebounceSeconds": 15.0
+    "BanDebounceSeconds": 15.0,
+    "DefaultBanDurationMinutes": 0
+  },
+  "SimpleAdminIntegration": {
+    "Enabled": false,
+    "UseForBans": true,
+    "UseCommandFallback": true,
+    "CommandName": "css_addban",
+    "ReasonPrefix": "[S2AC]"
   }
 }
 ```
 
+`DatabaseConfig` and legacy `Database` keys are both supported.
+If `ConnectionString` is empty, S2AC builds it from `DatabaseHost/Port/User/Password/Name/SSlMode`.
+
 ## REST API
+- `GET /` -> visual dashboard
 - `GET /api/health`
 - `GET /api/detections?limit=100`
 - `GET /api/player/{steamId}/detections?limit=100`
+- `GET /api/modules/stats?hours=24`
 - `GET /api/suspicious-players?hours=24&minDetections=3&limit=100`
 - `GET /api/bans?limit=100`
 
 If `WebPanel.ApiKey` is set, send it as `X-Api-Key`.
+The visual dashboard at `/` includes an API key field and stores the key in browser local storage.
