@@ -18,6 +18,7 @@ Modular anti-cheat plugin for Counter-Strike 2 built on CounterStrikeSharp.
 ## Requirements
 - CounterStrikeSharp
 - RayTraceImpl plugin/capability (`raytrace:craytraceinterface`)
+- RayTraceApi shared assembly (`addons/counterstrikesharp/shared/RayTraceApi/RayTraceApi.dll`)
 - .NET 8 runtime
 
 ## Build
@@ -25,18 +26,59 @@ Modular anti-cheat plugin for Counter-Strike 2 built on CounterStrikeSharp.
 dotnet build Source2AntiCheat.csproj
 ```
 
+`gamedata/Source2AntiCheat.json` is intentionally not copied into `bin/`.
+Place it manually under `addons/counterstrikesharp/gamedata/`.
+
 ## Config Path
 `addons/counterstrikesharp/configs/plugins/Source2AntiCheat/Source2AntiCheat.json`
+
+## Gamedata Path
+`addons/counterstrikesharp/gamedata/Source2AntiCheat.json`
+
+CounterStrikeSharp only loads gamedata from the global `gamedata/*.json` directory.
+Do not place this file in the plugin folder.
+
+## Deployment Layout
+```text
+addons/counterstrikesharp/
+  gamedata/
+    Source2AntiCheat.json
+  shared/
+    RayTraceApi/
+      RayTraceApi.dll
+  plugins/
+    Source2AntiCheat/
+      Source2AntiCheat.dll
+      lang/
+        en.json
+      WebPanel/
+        index.html
+        app.js
+        styles.css
+```
+
+RayTrace API assembly should be installed in CounterStrikeSharp shared path, as documented by Ray-Trace.
 
 ## Config (example)
 ```json
 {
-  "ConfigVersion": 7,
+  "ConfigVersion": 10,
+  "AntiWallHack": {
+    "Enabled": true,
+    "UpdateEveryTicks": 2,
+    "ForwardHemisphereDistance": 75.0,
+    "BoundingBoxPaddingX": 15.0,
+    "BoundingBoxPaddingY": 50.0,
+    "VisibilityHitFraction": 0.99,
+    "FailOpenIfRayTraceMissing": true
+  },
   "SilentAim": {
     "Enabled": true,
     "MaxDeviation": 15.0,
     "SuspicionThreshold": 3,
     "ShotDataExpiryMs": 250,
+    "MinImpactDistance": 100.0,
+    "MaxImpactDistance": 10000.0,
     "ViolationDecay": 1,
     "BanPlayer": false
   },
@@ -57,6 +99,7 @@ dotnet build Source2AntiCheat.csproj
     "TrackTime": 3.0,
     "SuspicionThreshold": 5,
     "TrackingConeDot": 0.998,
+    "MaxTargetDistance": 9000.0,
     "TargetLockTicks": 6,
     "MaxCrosshairDelta": 1.0,
     "MinPlayerSpeed": 50.0,
@@ -88,6 +131,7 @@ dotnet build Source2AntiCheat.csproj
     "Threshold": 64,
     "DecreasePlayerSpeed": true,
     "PerfectJumpThreshold": 16,
+    "PerfectJumpMaxGroundTicks": 1,
     "MinJumpSpeed": 240.0,
     "DetectionCooldownSeconds": 3.0
   },
@@ -130,7 +174,12 @@ dotnet build Source2AntiCheat.csproj
   "Enforcement": {
     "DetectionCooldownSeconds": 1.0,
     "BanDebounceSeconds": 15.0,
-    "DefaultBanDurationMinutes": 0
+    "DefaultBanDurationMinutes": 0,
+    "BroadcastDetectionsToChat": true,
+    "BroadcastBansToChat": true,
+    "IncludeEvidenceInDetectionChat": true,
+    "DetectionEvidenceMaxLength": 120,
+    "NotifyBannedPlayer": true
   },
   "SimpleAdminIntegration": {
     "Enabled": false,
@@ -144,6 +193,7 @@ dotnet build Source2AntiCheat.csproj
 
 `DatabaseConfig` and legacy `Database` keys are both supported.
 If `ConnectionString` is empty, S2AC builds it from `DatabaseHost/Port/User/Password/Name/SSlMode`.
+Both `DatabaseSSlMode` and `DatabaseSSLMode` key variants are accepted.
 
 ## REST API
 - `GET /` -> visual dashboard
@@ -156,3 +206,14 @@ If `ConnectionString` is empty, S2AC builds it from `DatabaseHost/Port/User/Pass
 
 If `WebPanel.ApiKey` is set, send it as `X-Api-Key`.
 The visual dashboard at `/` includes an API key field and stores the key in browser local storage.
+
+## Web Panel Quick Setup
+1. Enable `DatabaseConfig.Enabled` (or `Database.Enabled`) and fill MySQL settings.
+2. Enable `WebPanel.Enabled`.
+3. Set `WebPanel.Prefix`:
+   - local only: `http://127.0.0.1:8085/`
+   - LAN/public bind: `http://0.0.0.0:8085/`
+4. Restart server/plugin.
+5. Open `http://<server-ip>:8085/` in browser.
+
+If you set `WebPanel.ApiKey`, enter the same key in panel UI (or send `X-Api-Key` in API calls).
