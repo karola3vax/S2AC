@@ -5,7 +5,7 @@
 **Advanced Server-Side Player Data Withholding (Fog of War) for Counter-Strike 2**
 
 [![CounterStrikeSharp](https://img.shields.io/badge/CounterStrikeSharp-API-gray?style=flat-square)](https://github.com/roflmuffin/CounterStrikeSharp)
-[![RayTraceAPI](https://img.shields.io/badge/RayTraceAPI-Required-gray?style=flat-square)](https://github.com/daffyyyy/Ray-Trace)
+[![RayTraceAPI](https://img.shields.io/badge/RayTraceAPI-Required-gray?style=flat-square)](https://github.com/FUNPLAY-pro-CS2/Ray-Trace)
 [![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](#)
 
 </div>
@@ -33,7 +33,7 @@ Inspired by Valorant's Fog of War architecture, it guarantees a competitive, pop
 This plugin requires two main dependencies to function correctly.
 
 1. Install [CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp) (v276 or higher).
-2. Install the [Ray-Trace API](https://github.com/daffyyyy/Ray-Trace) plugin by `daffyyyy`.
+2. Install the [Ray-Trace API](https://github.com/FUNPLAY-pro-CS2/Ray-Trace) plugins. **(You MUST install both the `RayTrace-CSSharp` and `RayTrace-MM` packages from their releases page).**
 3. Download the latest release of `CS2-AntiWallHack`.
 4. Extract the `CS2-AntiWallHack` folder into your `game/csgo/addons/counterstrikesharp/plugins` directory.
 5. Restart the server or run `css_plugins load CS2-AntiWallHack`.
