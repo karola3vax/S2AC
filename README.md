@@ -1,219 +1,79 @@
-# Source2AntiCheat (S2AC)
+<div align="center">
 
-Modular anti-cheat plugin for Counter-Strike 2 built on CounterStrikeSharp.
+# 🛡️ CS2 Anti-Wallhack
 
-## Features
-- Active anti-aim detection (desync + spin + jitter patterns from RunCommand).
-- Silent aim detection (weapon-aware bullet deviation analysis).
-- Aimbot snap detection (shot-window + target-lock contextual flick analysis).
-- Aimbot tracking detection (lock consistency, low-delta tracking, optional LOS checks).
-- RapidFire and DoubleTap detection using weapon cycle-time heuristics.
-- Bunnyhop detection (speed clamp + perfect-jump streak analysis).
-- Anti-wallhack networking filter using RayTrace capability + CheckTransmit.
-- MySQL persistence (`detections`, `bans`).
-- Embedded REST backend for web panel consumption.
-- CSV telemetry logging for ML training (`data/aimbot_tracking_samples.csv`).
-- Optional SimpleAdmin ban handoff (API + command fallback).
+**Advanced Server-Side Player Data Withholding (Fog of War) for Counter-Strike 2**
 
-## Requirements
-- CounterStrikeSharp
-- RayTraceImpl plugin/capability (`raytrace:craytraceinterface`)
-- RayTraceApi shared assembly (`addons/counterstrikesharp/shared/RayTraceApi/RayTraceApi.dll`)
-- .NET 8 runtime
+[![CounterStrikeSharp](https://img.shields.io/badge/CounterStrikeSharp-API-gray?style=flat-square)](https://github.com/roflmuffin/CounterStrikeSharp)
+[![RayTraceAPI](https://img.shields.io/badge/RayTraceAPI-Required-gray?style=flat-square)](https://github.com/daffyyyy/Ray-Trace)
+[![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](#)
 
-## Build
-```powershell
-dotnet build Source2AntiCheat.csproj
-```
+</div>
 
-`gamedata/Source2AntiCheat.json` is intentionally not copied into `bin/`.
-Place it manually under `addons/counterstrikesharp/gamedata/`.
+---
 
-## Config Path
-`addons/counterstrikesharp/configs/plugins/Source2AntiCheat/Source2AntiCheat.json`
+## 🕶️ Overview
 
-## Gamedata Path
-`addons/counterstrikesharp/gamedata/Source2AntiCheat.json`
+**CS2 Anti-Wallhack** is a state-of-the-art CounterStrikeSharp plugin designed to combat ESP and Wallhack cheats at the server level. Unlike traditional anti-cheats that rely on client-side behavioral analysis, this plugin utilizes **RayTracing** to physically block networked player data from reaching the client until the enemy is actually within the player's line of sight or about to peek.
 
-CounterStrikeSharp only loads gamedata from the global `gamedata/*.json` directory.
-Do not place this file in the plugin folder.
+Inspired by Valorant's Fog of War architecture, it guarantees a competitive, pop-in-free environment with high performance.
 
-## Deployment Layout
-```text
-addons/counterstrikesharp/
-  gamedata/
-    Source2AntiCheat.json
-  shared/
-    RayTraceApi/
-      RayTraceApi.dll
-  plugins/
-    Source2AntiCheat/
-      Source2AntiCheat.dll
-      lang/
-        en.json
-      WebPanel/
-        index.html
-        app.js
-        styles.css
-```
+## ✨ Core Features
 
-RayTrace API assembly should be installed in CounterStrikeSharp shared path, as documented by Ray-Trace.
+* **📐 10-Point AABB Bound Tracing:** Uses the exact 3D limits (`Mins`/`Maxs`) of a player's model to calculate visibility from 10 dynamic points (8 corners, center, and head), ensuring pixel-perfect accuracy.
+* **🏃 Velocity-based Prediction (No Pop-in):** Expands the enemy's bounding box into the future based on their movement speed and direction. This optimistically sends data *just before* they peek a corner, eliminating the "pop-in" effect.
+* **🔭 Aggressive FOV Culling:** An optional, highly optimized culling method that drops ray-trace calculations for enemies standing behind the player (outside the 180° front plane).
+* **👻 Spectator & Ragdoll Support:** Perfect handling of dead viewers and spectator modes, ensuring observers always see the full picture without stale cached data blocking their view.
+* **⚙️ Zero-Hallucination API:** Built strictly against the latest CS2 Schemas and CounterStrikeSharp native structures for a 0-warning, robust compilation.
 
-## Config (example)
+---
+
+## 📦 Installation
+
+This plugin requires two main dependencies to function correctly.
+
+1. Install [CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp) (v276 or higher).
+2. Install the [Ray-Trace API](https://github.com/daffyyyy/Ray-Trace) plugin by `daffyyyy`.
+3. Download the latest release of `CS2-AntiWallHack`.
+4. Extract the `CS2-AntiWallHack` folder into your `game/csgo/addons/counterstrikesharp/plugins` directory.
+5. Restart the server or run `css_plugins load CS2-AntiWallHack`.
+
+*(Note: The plugin is designed to safely wait for the RayTrace capability to load, preventing `KeyNotFoundException` startup crashes.)*
+
+---
+
+## 🛠️ Configuration
+
+The plugin automatically generates a `CS2-AntiWallHack.json` configuration file in the plugin's directory. All settings can be tuned on the fly without restarting the server.
+
 ```json
 {
-  "ConfigVersion": 10,
-  "AntiWallHack": {
-    "Enabled": true,
-    "UpdateEveryTicks": 2,
-    "ForwardHemisphereDistance": 75.0,
-    "BoundingBoxPaddingX": 15.0,
-    "BoundingBoxPaddingY": 50.0,
-    "VisibilityHitFraction": 0.99,
-    "FailOpenIfRayTraceMissing": true
-  },
-  "SilentAim": {
-    "Enabled": true,
-    "MaxDeviation": 15.0,
-    "SuspicionThreshold": 3,
-    "ShotDataExpiryMs": 250,
-    "MinImpactDistance": 100.0,
-    "MaxImpactDistance": 10000.0,
-    "ViolationDecay": 1,
-    "BanPlayer": false
-  },
-  "AimbotSnap": {
-    "Enabled": true,
-    "AngleThreshold": 30.0,
-    "MinPitchDelta": 4.0,
-    "SuspicionThreshold": 5,
-    "RequireRecentShot": true,
-    "ShotWindowTicks": 4,
-    "TargetDotThreshold": 0.9965,
-    "MinDotGain": 0.02,
-    "MaxTargetDistance": 6000.0,
-    "BanPlayer": false
-  },
-  "AimbotTracking": {
-    "Enabled": true,
-    "TrackTime": 3.0,
-    "SuspicionThreshold": 5,
-    "TrackingConeDot": 0.998,
-    "MaxTargetDistance": 9000.0,
-    "TargetLockTicks": 6,
-    "MaxCrosshairDelta": 1.0,
-    "MinPlayerSpeed": 50.0,
-    "MinTargetSpeed": 50.0,
-    "RequireVisibility": true,
-    "RequireRecentShot": true,
-    "ShotWindowTicks": 8,
-    "DecayRate": 1.0,
-    "BanPlayer": false
-  },
-  "RapidFire": {
-    "Enabled": true,
-    "BanPlayer": true,
-    "Threshold": 3,
-    "TickTolerance": 1,
-    "MinExpectedCycleTicks": 2,
-    "CooldownSeconds": 2.0
-  },
-  "DoubleTap": {
-    "Enabled": true,
-    "MaxTicks": 1,
-    "SuspicionThreshold": 3,
-    "CooldownSeconds": 2.0,
-    "BanPlayer": true
-  },
-  "Bunnyhop": {
-    "Enabled": true,
-    "SpeedLimit": 320.0,
-    "Threshold": 64,
-    "DecreasePlayerSpeed": true,
-    "PerfectJumpThreshold": 16,
-    "PerfectJumpMaxGroundTicks": 1,
-    "MinJumpSpeed": 240.0,
-    "DetectionCooldownSeconds": 3.0
-  },
-  "ActiveAntiAim": {
-    "Enabled": true,
-    "AngleThreshold": 58.0,
-    "SpinDeltaThreshold": 95.0,
-    "JitterDeltaThreshold": 70.0,
-    "SuspicionThreshold": 5,
-    "CooldownSeconds": 2.0,
-    "BanPlayer": true
-  },
-  "DatabaseConfig": {
-    "Enabled": false,
-    "DatabaseType": "MySQL",
-    "DatabaseHost": "localhost",
-    "DatabasePort": 3306,
-    "DatabaseUser": "root",
-    "DatabasePassword": "",
-    "DatabaseName": "s2ac",
-    "DatabaseSSlMode": "preferred",
-    "ConnectionString": "",
-    "PreferSimpleAdminConnection": false,
-    "AutoCreateTables": true,
-    "CommandTimeoutSeconds": 8
-  },
-  "WebPanel": {
-    "Enabled": false,
-    "Prefix": "http://127.0.0.1:8085/",
-    "ApiKey": "",
-    "DefaultPageSize": 100,
-    "MaxPageSize": 500
-  },
-  "MlTrackingCsv": {
-    "Enabled": true,
-    "CsvFileName": "aimbot_tracking_samples.csv",
-    "SampleEveryTicks": 1,
-    "SampleOnlyWhenTargeted": false
-  },
-  "Enforcement": {
-    "DetectionCooldownSeconds": 1.0,
-    "BanDebounceSeconds": 15.0,
-    "DefaultBanDurationMinutes": 0,
-    "BroadcastDetectionsToChat": true,
-    "BroadcastBansToChat": true,
-    "IncludeEvidenceInDetectionChat": true,
-    "DetectionEvidenceMaxLength": 120,
-    "NotifyBannedPlayer": true
-  },
-  "SimpleAdminIntegration": {
-    "Enabled": false,
-    "UseForBans": true,
-    "UseCommandFallback": true,
-    "CommandName": "css_addban",
-    "ReasonPrefix": "[S2AC]"
-  }
+  "EnableAntiWallhack": true,
+  "RayTracePoints": 10,
+  "PredictorDistance": 150.0,
+  "UpdateFrequency": 2,
+  "IncludeTeammates": false,
+  "IncludeBots": true,
+  "BotsDoLOS": true,
+  "UseFovCulling": false,
+  "ShowDebugInfo": false
 }
 ```
 
-`DatabaseConfig` and legacy `Database` keys are both supported.
-If `ConnectionString` is empty, S2AC builds it from `DatabaseHost/Port/User/Password/Name/SSlMode`.
-Both `DatabaseSSlMode` and `DatabaseSSLMode` key variants are accepted.
+### ⚙️ Parameter Details
 
-## REST API
-- `GET /` -> visual dashboard
-- `GET /api/health`
-- `GET /api/detections?limit=100`
-- `GET /api/player/{steamId}/detections?limit=100`
-- `GET /api/modules/stats?hours=24`
-- `GET /api/suspicious-players?hours=24&minDetections=3&limit=100`
-- `GET /api/bans?limit=100`
+| Setting | Default | Description |
+| :--- | :---: | :--- |
+| `UpdateFrequency` | `2` | Number of server ticks to skip between RayTrace calculations. Higher = more CPU saving, less accuracy. |
+| `RayTracePoints` | `10` | Number of points to ray-trace on the target's bounding box. Max is 10. |
+| `PredictorDistance` | `150.0` | How far into the future (in units) the bounding box is expanded based on the target's velocity. |
+| `IncludeTeammates` | `false` | If `true`, the plugin will also try to hide teammates from each other behind walls. |
+| `IncludeBots` | `true` | If `false`, bots will always have their data transmitted to everyone (not hidden by the anti-wallhack). |
+| `BotsDoLOS` | `true` | If `true`, bots will act like real players and calculate their own line of sight. Great for CPU stress-testing. |
+| `UseFovCulling` | `false` | Aggressively hides players behind you without doing RayTrace math to save CPU. May cause pop-in on fast 180° flicks. |
 
-If `WebPanel.ApiKey` is set, send it as `X-Api-Key`.
-The visual dashboard at `/` includes an API key field and stores the key in browser local storage.
+---
 
-## Web Panel Quick Setup
-1. Enable `DatabaseConfig.Enabled` (or `Database.Enabled`) and fill MySQL settings.
-2. Enable `WebPanel.Enabled`.
-3. Set `WebPanel.Prefix`:
-   - local only: `http://127.0.0.1:8085/`
-   - LAN/public bind: `http://0.0.0.0:8085/`
-4. Restart server/plugin.
-5. Open `http://<server-ip>:8085/` in browser.
-
-If you set `WebPanel.ApiKey`, enter the same key in panel UI (or send `X-Api-Key` in API calls).
+<div align="center">
+  <sub>Built with precision for the Counter-Strike 2 Competitive Scene.</sub>
+</div>
